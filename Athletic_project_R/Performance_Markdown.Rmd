@@ -1,0 +1,204 @@
+---
+title: "Athletic Performance."
+author: "Project in R by Liz Ángel."
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# We start dowloading libraries. 
+
+library(tidyverse)
+library(ggplot2)
+library(kableExtra)
+library(dplyr)
+library(scales)
+library(knitr)
+```
+
+# 📊 Performance Sport.
+
+## 1. Introduction.
+
+This analysis examines the performance of 5 athletes over 8 weeks of training, evaluating improvements, consistency and trends.
+
+## 2. Load and data prepare.
+
+```{r datos}
+# Define our data with the next vectors
+athletes <- c('Ana', 'Carlos', 'Maria', 'Javier', 'Laura')
+weeks <- c("Week_1", "Week_2", "Week_3", "Week_4", "Week_5", "Week_6", "Week_7", "Week_8")
+
+
+
+# Performance matrix (100 points)
+performance <- matrix(c(
+  85, 78, 82, 79, 88, 90, 92, 95,  # Ana
+  72, 75, 80, 82, 85, 83, 88, 90,  # Carlos
+  90, 88, 85, 87, 89, 91, 94, 96,  # Maria
+  65, 70, 75, 78, 80, 82, 85, 88,  # Javier
+  88, 85, 87, 89, 91, 90, 93, 95   # Laura
+), nrow = 5, byrow = TRUE)
+
+
+
+# Create a DataFrame with our athletes and their points per week.
+df_performance <- as.data.frame(performance)
+colnames(df_performance) <- weeks
+rownames(df_performance) <- athletes
+
+
+
+# Show initial table with kable styling; in this case "striped" and "hover".
+kable(df_performance, caption = "Performance Data by Athlete") %>%
+kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+## 3. Exploratory Analysis.
+
+### 3.1 Descriptive Statistics by athletle.
+
+```{r estadisticas-atletas}
+# Calculate statistics by athlete
+athlete_stats <- df_performance %>%
+  rownames_to_column("Athlete") %>% # Now I have "Athlete" add in our column.
+  pivot_longer(
+    cols = starts_with("Week_"),    # I want to transform just weeks columns.
+    names_to = "Week",              # Now every column "week_" is already in a single column, "Week".
+    values_to = "Performance") %>%  # All numeric values are include in a new column, "Performance."
+  group_by(Athlete) %>%             # Now our Athletes are in a group with their values and weeks.
+  summarise(
+    Mean = mean(Performance),
+    Minimum = min(Performance),
+    Maximum = max(Performance),
+    Standard_Deviation = sd(Performance),
+    Absolute_Improvement = max(Performance) - min(Performance)
+  ) %>%
+  arrange(desc(Mean))
+
+# The key is recognize our functions.
+# Max() it's maximum score.
+# Min() it's the minimum score.
+# Mean() it's the mean score.
+# sd() it's Standar Deviation
+
+
+# Once again, I use kable() function to make a better table.
+kable(athlete_stats, caption = "Statistics by Athlete") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+### 3.2 Evolution chart Week-to-Week.
+ 
+```{r evolucion-semanal}
+# Prepare data for ggplot because I want to make a graphic about our data.
+df_long <- df_performance %>%
+  rownames_to_column("Athlete") %>%
+  pivot_longer(cols = starts_with("Week_"),    # Order again our columns with pivot_longer() function.
+               names_to = "Week",
+               values_to = "Performance") %>%
+  mutate(Week_Num = as.numeric(str_remove(Week, "Week_")))
+# This part is our key to make a graphic.
+# With mutate() fuction make a new colums with the named "Week_Num".
+# Within mutate(), use str_remove() to extract numbers from the "Week" column.
+# Using as.numeric() convert those extracted text values into actual numbers.
+# The result is a new nureic column "Week_Num" that works perfectly for ggplot and graphs.
+
+
+# Evolution chart.
+ggplot(df_long, aes(x = Week_Num,          # Week numbers(1,2,3...n) 
+                    y = Performance,       # Performance Score (It's our matrix)
+                    color = Athlete,       # Color by Athlete 
+                    group = Athlete)) +    # Conect points by athleta.
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = 1:8, labels = weeks) +  # Position 1 to 8 called "Week_1, Week_2..".
+  labs(
+    title = "Performance Evolution by Athlete 8 week training tracking",
+    x = "Weeks",
+    y = "Performance Score 100 points"
+  ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "bottom")        # Put our color legend in the bottom side.
+```
+
+## 4. Improvement and Consistency Analysis.
+
+### 4.1 Weekly progress.
+
+```{r progreso}
+# Calculate week to week differences
+df_progress <- df_performance %>%
+  apply(1, diff) %>%                   # Apply 1 row and 2 columns to make the diference by week..
+  t() %>%                              # And I use transpose matrix "t()" because "apply()" changed rows
+                                         # to columns and I need to reverse that change.
+  
+  as.data.frame()                      # Then, this matrix need to be a DataFrame, for that
+                                         #as.data.frame() function.
+
+print(df_progress)                     # Now, we can see evolution by week in the athletes.
+
+colnames(df_progress) <- paste0("Diff_Week", 2:8)
+df_progress$Athlete <- athletes
+kable(df_progress, caption = "Weekly Performance Differences") %>%
+kable_styling(bootstrap_options = c("striped","hover"))
+```
+
+### 4.2 Consistency Analysis.
+
+```{r consistencia}
+# Calculate coefficient of variation (consistency)
+df_consistency <- df_performance %>%
+  rownames_to_column("Athlete") %>%
+  pivot_longer(cols = starts_with("Week_"),
+               names_to = "Week",
+               values_to = "Performance") %>%
+  group_by(Athlete) %>%
+  summarise(
+    Mean = mean(Performance),
+    Standard_Deviation = sd(Performance),           # Using sd() we get Standar Deviation.
+    Coefficient_Variation = sd(Performance) / mean(Performance) * 100,   #This is a key, relative variation.
+    .groups = 'drop'
+  ) %>%
+  arrange(Coefficient_Variation)  #Now, the lower CV (Coeficcient Variaton) will be the first in the DataFrame.
+
+kable(df_consistency, caption = "Consistency Analysis (Lower CV = More Consistent)") %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+## 5. Key Findings.
+
+### 5.1 Answers to Analysis questions.
+
+```{r}
+# Answer our questions.
+
+# Which athlete shows the most improvement?
+most_improved <- athlete_stats %>%
+  arrange(desc(Absolute_Improvement)) %>%  # The athlete with the greatest improvement will be fisrt.
+  slice(1)
+
+# Which athlete is most consistent?
+most_consistent <- df_consistency %>%
+  arrange(Coefficient_Variation) %>%       # The lowest CV will be first.  
+  slice(1)
+
+# Best overall performance?
+best_performance <- athlete_stats %>%
+  arrange(desc(Mean)) %>%                # The best mean will be first.
+  slice(1)
+
+cat("Main Findings:\n\n")
+cat("1. Most improved: ", most_improved$Athlete, "(+", most_improved$Absolute_Improvement, "points)\n")
+cat("2. Most consistent: ", most_consistent$Athlete, "(CV:", round(most_consistent$Coefficient_Variation, 1), "%)\n")
+cat("3. Best average performance: ", best_performance$Athlete, "(", round(best_performance$Mean, 1), "points)\n")
+```
+
+## 6. Conclusions
+
+### 6.1 Conclusions.
+
+1. General positive trend in all athletes.
+2. Javier Shows the greatest absolute improvement despite starting with the lowest score.
+3. Maria maintains the highest performance consistently.
+4. Week 8 Shows the best collective performance in the entire weeks.
