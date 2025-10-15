@@ -8,7 +8,7 @@ Este repositorio contiene mi curva de aprendizaje en: / This repository contains
 - Visualización de datos |  Data visualization
 
 ### 🛠️ Tecnologías utilizadas:
-- Python (pandas, scikit-learn, matplotlib)
+- Python (pandas, scikit-learn, matplotlib, seaborn)
 - R (ggplot2, dplyr, kableExtra)
 - Markdown and HTML
 
